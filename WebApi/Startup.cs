@@ -24,7 +24,7 @@ namespace WebApi
         {
             services.AddDbContext<ApplicationDbContext>(options =>
                 options
-                .UseSqlServer(Configuration.GetConnectionString("DefaultConnection"))
+                .UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), b => b.MigrationsAssembly("WebApi"))
                 .EnableSensitiveDataLogging(true)
                 );
 
