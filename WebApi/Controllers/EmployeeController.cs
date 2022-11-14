@@ -2,6 +2,7 @@
 using Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Persistence.Contexts;
 using System;
 using System.Data.Common;
 using System.Linq;
@@ -41,7 +42,7 @@ namespace WebApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddNewEmployeeWithDepartment(EmployeeDto employeeDto)
+        public async Task<IActionResult> AddNewEmployeeWithDepartment(Employee employeeDto)
         {
             _dbContext.Connection.Open();
             using (var transaction = _dbContext.Connection.BeginTransaction())
@@ -56,26 +57,83 @@ namespace WebApi.Controllers
                         throw new Exception("Department Already Exists");
                     }
                     //Add Department
-                    var addDepartmentQuery = $"INSERT INTO Departments(Name,Description) VALUES('{employeeDto.Department.Name}','{employeeDto.Department.Description}');SELECT CAST(SCOPE_IDENTITY() as int)";
-                    var departmentId = await _writeDbConnection.QuerySingleAsync<int>(addDepartmentQuery, transaction: transaction);
+                    //var addDepartmentQuery = $"INSERT INTO Departments(Name,Description) VALUES('{employeeDto.Department.Name}','{employeeDto.Department.Description}');SELECT CAST(SCOPE_IDENTITY() as int)";
+                    //var departmentId = await _writeDbConnection.QuerySingleAsync<int>(addDepartmentQuery, transaction: transaction);
+
+
                     //Check if Department Id is not Zero.
-                    if (departmentId == 0)
-                    {
-                        throw new Exception("Department Id");
-                    }
+                    //if (departmentId == 0)
+                    //{
+                    //    throw new Exception("Department Id");
+                    //}
                     //Add Employee
+                    //var a = _dbContext.Employees.Include(x => x.Department).ThenInclude(a => a.Description).ToList();
                     var employee = new Employee
                     {
-                        DepartmentId = departmentId,
+                        DepartmentId = employeeDto.Department.Id,
                         Name = employeeDto.Name,
-                        Email = employeeDto.Email
+                        Email = employeeDto.Email,
+                        Department = new Department{ Id = employeeDto.Department.Id, Name = employeeDto.Department.Name, Description = employeeDto.Department.Description }
                     };
+                    //employee.Department = employeeDto.Department;
                     await _dbContext.Employees.AddAsync(employee);
                     await _dbContext.SaveChangesAsync(default);
+
+
                     //Commmit
                     transaction.Commit();
                     //Return EmployeeId
-                    return Ok(employee.Id);
+                    return Ok(1);
+                }
+                catch (Exception)
+                {
+                    transaction.Rollback();
+                    throw;
+                }
+                finally
+                {
+                    _dbContext.Connection.Close();
+                }
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteEmployee(int id)
+        {
+            _dbContext.Connection.Open();
+            using (var transaction = _dbContext.Connection.BeginTransaction())
+            {
+                try
+                {
+                    //using var context = new ApplicationDbContext();
+                    _dbContext.Database.UseTransaction(transaction as DbTransaction);
+
+                    //var deleteDepartmentQuery = $"de INTO Departments(Name,Description) VALUES('{employeeDto.Department.Name}','{employeeDto.Department.Description}');SELECT CAST(SCOPE_IDENTITY() as int)";
+                    //var departmentId = await _writeDbConnection.QuerySingleAsync<int>(addDepartmentQuery, transaction: transaction);
+
+
+                    //var employee = await _dbContext.Employees.Include(e => e.Department).FirstOrDefaultAsync();
+                    //var employee = _dbContext.Employees.FirstOrDefault();
+                    //var department = employee.Department;
+                    //var department =  _dbContext.Employees.Include(e => e.Department);
+                    //if (employee == null)
+                    //{
+                    //    return NotFound();
+                    //}
+                    //_dbContext.Departments.Remove(department);
+                    var employee = _dbContext.Employees.OrderBy(e => e.Id).Include(e => e.Department).First();
+
+                    //_dbContext.Employees(blog);
+
+                    //context.SaveChanges();
+                    _dbContext.Employees.Remove(employee);
+                    await _dbContext.SaveChangesAsync(default);
+
+
+                    //Commmit
+                    transaction.Commit();
+                    //Return EmployeeId
+                    return Ok(1);
                 }
                 catch (Exception)
                 {
